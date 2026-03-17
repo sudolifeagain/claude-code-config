@@ -11,8 +11,32 @@ used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 cost=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
 duration_ms=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
 
-# Terminal width detection
-COLS=$(tput cols 2>/dev/null || echo 120)
+# Terminal width detection (cached for 30s to avoid slow mode con calls)
+COLS_CACHE="/tmp/.claude-termcols"
+COLS_TTL=30
+_detect_cols() {
+  # 1. Windows: mode con gives the real width
+  local w
+  w=$(cmd //c "mode con" 2>/dev/null | sed -n '5p' | tr -dc '0-9')
+  if [ -n "$w" ] && [ "$w" -gt 0 ] 2>/dev/null; then echo "$w"; return; fi
+  # 2. tput (Linux/macOS, or if Windows detection fails)
+  w=$(tput cols 2>/dev/null)
+  if [ -n "$w" ] && [ "$w" -gt 0 ] 2>/dev/null; then echo "$w"; return; fi
+  # 3. Fallback
+  echo 120
+}
+if [ -f "$COLS_CACHE" ]; then
+  cols_age=$(( $(date +%s) - $(date -r "$COLS_CACHE" +%s 2>/dev/null || stat -c %Y "$COLS_CACHE" 2>/dev/null || echo 0) ))
+  if [ "$cols_age" -gt "$COLS_TTL" ]; then
+    COLS=$(_detect_cols)
+    echo "$COLS" > "$COLS_CACHE"
+  else
+    COLS=$(cat "$COLS_CACHE")
+  fi
+else
+  COLS=$(_detect_cols)
+  echo "$COLS" > "$COLS_CACHE"
+fi
 
 # Git branch, dirty status, and project directory (single pass)
 branch=""
