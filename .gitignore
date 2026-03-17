@@ -1,27 +1,14 @@
-# Sensitive files
-.credentials.json
-settings.local.json
+# Deny all by default
+*
 
-# Runtime data
-history.jsonl
-stats-cache.json
-*.cache
-
-# Directories that contain personal data
-sessions/
-projects/
-cache/
-debug/
-file-history/
-plans/
-tasks/
-todos/
-backups/
-downloads/
-ide/
-paste-cache/
-shell-snapshots/
-statsig/
-telemetry/
-teams/
-plugins/
+# Allow only tracked config files
+!.gitignore
+!LICENSE
+!README.md
+!install.sh
+!uninstall.sh
+!settings.example.json
+!statusline-command.sh
+!skills/
+!skills/*/
+!skills/*/SKILL.md
