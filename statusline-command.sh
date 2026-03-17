@@ -118,8 +118,12 @@ fetch_usage() {
 active_ttl="$CACHE_TTL"
 [ -f "$FAIL_MARKER" ] && active_ttl="$CACHE_TTL_FAIL"
 
+_file_mtime() {
+  stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || echo 0
+}
+
 if [ -f "$CACHE_FILE" ]; then
-  cache_age=$(( $(date +%s) - $(date -r "$CACHE_FILE" +%s 2>/dev/null || stat -c %Y "$CACHE_FILE" 2>/dev/null || echo 0) ))
+  cache_age=$(( $(date +%s) - $(_file_mtime "$CACHE_FILE") ))
   [ "$cache_age" -gt "$active_ttl" ] && fetch_usage
 else
   fetch_usage
@@ -139,7 +143,8 @@ remaining_time() {
   local reset_at="$1"
   if [ -z "$reset_at" ]; then return; fi
   local clean=$(echo "$reset_at" | sed 's/\.[0-9]*//' | sed 's/+00:00$/+0000/' | sed 's/Z$/+0000/')
-  local reset_epoch=$(date -d "$clean" +%s 2>/dev/null)
+  # GNU date (Linux/Windows Git Bash) or BSD date (macOS)
+  local reset_epoch=$(date -d "$clean" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S%z" "$clean" +%s 2>/dev/null)
   if [ -z "$reset_epoch" ]; then return; fi
   local now=$(date +%s)
   local diff=$(( reset_epoch - now ))
