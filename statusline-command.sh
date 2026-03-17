@@ -106,13 +106,16 @@ fetch_usage() {
     return 1
   fi
 
+  local _auth="${CACHE_DIR}/.auth-header"
+  printf 'Authorization: Bearer %s' "$token" > "$_auth"
   response=$(curl -s --max-time 3 \
     -H "Accept: application/json" \
     -H "Content-Type: application/json" \
-    -H @<(echo "Authorization: Bearer $token") \
+    -H @"$_auth" \
     -H "anthropic-beta: oauth-2025-04-20" \
     -H "User-Agent: claude-code-statusline/1.0" \
     "https://api.anthropic.com/api/oauth/usage" 2>/dev/null)
+  rm -f "$_auth" 2>/dev/null
 
   if echo "$response" | jq -e '.five_hour' > /dev/null 2>&1; then
     echo "$response" > "$CACHE_FILE"
