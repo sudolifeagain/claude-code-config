@@ -8,7 +8,6 @@ cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // ""')
 model=$(echo "$input" | jq -r '.model.display_name // ""')
 used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 cost=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
-duration_ms=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
 
 # Git branch, dirty status, and project directory (single pass)
 branch=""
@@ -72,10 +71,11 @@ if [ -n "$used_pct" ]; then
 fi
 
 # --- Fetch 5-hour / weekly usage quota ---
-CACHE_FILE="/tmp/.claude-usage-cache"
+CACHE_DIR="${TMPDIR:-/tmp}"
+CACHE_FILE="${CACHE_DIR}/.claude-usage-cache-$(id -u 2>/dev/null || echo 0)"
 CACHE_TTL=300
 CACHE_TTL_FAIL=600
-FAIL_MARKER="/tmp/.claude-usage-fetch-failed"
+FAIL_MARKER="${CACHE_FILE}.fail"
 five_hour=""
 seven_day=""
 
@@ -97,7 +97,7 @@ fetch_usage() {
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $token" \
     -H "anthropic-beta: oauth-2025-04-20" \
-    -H "User-Agent: claude-code/2.0.32" \
+    -H "User-Agent: claude-code-statusline/1.0" \
     "https://api.anthropic.com/api/oauth/usage" 2>/dev/null)
 
   if echo "$response" | jq -e '.five_hour' > /dev/null 2>&1; then
