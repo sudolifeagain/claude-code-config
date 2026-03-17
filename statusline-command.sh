@@ -2,12 +2,23 @@
 # Claude Code status line - robbyrussell theme inspired
 # with 5-hour / weekly usage quota display
 
+umask 077
+
 input=$(cat)
 
-cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // ""')
-model=$(echo "$input" | jq -r '.model.display_name // ""')
-used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
-cost=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
+{
+  read -r cwd
+  read -r model
+  read -r used_pct
+  read -r cost
+} <<< "$(echo "$input" | jq -r '
+  (.workspace.current_dir // .cwd // ""),
+  (.model.display_name // ""),
+  (.context_window.used_percentage // "" | tostring),
+  (.cost.total_cost_usd // 0 | tostring)
+' | tr -d '\r')"
+
+[[ "$cost" =~ ^[0-9]*\.?[0-9]+$ ]] || cost=0
 
 # Git branch, dirty status, and project directory (single pass)
 branch=""
@@ -15,7 +26,7 @@ dirty=""
 dir_name="?"
 if [ -n "$cwd" ] && git -C "$cwd" rev-parse --git-dir > /dev/null 2>&1; then
   branch=$(git -C "$cwd" symbolic-ref --short HEAD 2>/dev/null || git -C "$cwd" rev-parse --short HEAD 2>/dev/null)
-  if [ -n "$branch" ] && git -C "$cwd" status --porcelain 2>/dev/null | grep -q .; then
+  if [ -n "$branch" ] && git -C "$cwd" status --porcelain --no-renames 2>/dev/null | read -r _; then
     dirty="✗"
   fi
   # Use main worktree path as project name (resolves worktree → original repo)
@@ -71,11 +82,14 @@ if [ -n "$used_pct" ]; then
 fi
 
 # --- Fetch 5-hour / weekly usage quota ---
-CACHE_DIR="${TMPDIR:-/tmp}"
-CACHE_FILE="${CACHE_DIR}/.claude-usage-cache-$(id -u 2>/dev/null || echo 0)"
+
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/claude-statusline"
+mkdir -p "$CACHE_DIR" 2>/dev/null
+CACHE_FILE="${CACHE_DIR}/usage-cache"
 CACHE_TTL=300
 CACHE_TTL_FAIL=600
-FAIL_MARKER="${CACHE_FILE}.fail"
+FAIL_MARKER="${CACHE_DIR}/usage-cache.fail"
+LOCK_DIR="${CACHE_DIR}/fetch.lock"
 five_hour=""
 seven_day=""
 
@@ -95,7 +109,7 @@ fetch_usage() {
   response=$(curl -s --max-time 3 \
     -H "Accept: application/json" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $token" \
+    -H @<(echo "Authorization: Bearer $token") \
     -H "anthropic-beta: oauth-2025-04-20" \
     -H "User-Agent: claude-code-statusline/1.0" \
     "https://api.anthropic.com/api/oauth/usage" 2>/dev/null)
@@ -107,12 +121,22 @@ fetch_usage() {
   fi
   touch "$FAIL_MARKER" 2>/dev/null
   if [ -f "$CACHE_FILE" ] && [ -s "$CACHE_FILE" ]; then
-    local tmp="${CACHE_FILE}.tmp"
-    cp "$CACHE_FILE" "$tmp" 2>/dev/null && mv "$tmp" "$CACHE_FILE" 2>/dev/null
+    touch "$CACHE_FILE" 2>/dev/null
   else
     touch "$CACHE_FILE" 2>/dev/null
   fi
   return 1
+}
+
+fetch_with_lock() {
+  if [ -d "$LOCK_DIR" ]; then
+    lock_age=$(( $(date +%s) - $(_file_mtime "$LOCK_DIR") ))
+    [ "$lock_age" -gt 30 ] && rmdir "$LOCK_DIR" 2>/dev/null
+  fi
+  if mkdir "$LOCK_DIR" 2>/dev/null; then
+    trap 'rmdir "$LOCK_DIR" 2>/dev/null' RETURN
+    fetch_usage
+  fi
 }
 
 active_ttl="$CACHE_TTL"
@@ -124,19 +148,28 @@ _file_mtime() {
 
 if [ -f "$CACHE_FILE" ]; then
   cache_age=$(( $(date +%s) - $(_file_mtime "$CACHE_FILE") ))
-  [ "$cache_age" -gt "$active_ttl" ] && fetch_usage
+  [ "$cache_age" -gt "$active_ttl" ] && fetch_with_lock
 else
-  fetch_usage
+  fetch_with_lock
 fi
 
+five_hour=""
+seven_day=""
 five_hour_reset=""
 seven_day_reset=""
 
-if [ -f "$CACHE_FILE" ]; then
-  five_hour=$(jq -r '.five_hour.utilization // empty' "$CACHE_FILE" 2>/dev/null)
-  seven_day=$(jq -r '.seven_day.utilization // empty' "$CACHE_FILE" 2>/dev/null)
-  five_hour_reset=$(jq -r '.five_hour.resets_at // empty' "$CACHE_FILE" 2>/dev/null)
-  seven_day_reset=$(jq -r '.seven_day.resets_at // empty' "$CACHE_FILE" 2>/dev/null)
+if [ -f "$CACHE_FILE" ] && [ -s "$CACHE_FILE" ]; then
+  {
+    read -r five_hour
+    read -r seven_day
+    read -r five_hour_reset
+    read -r seven_day_reset
+  } <<< "$(jq -r '
+    (.five_hour.utilization // "" | tostring),
+    (.seven_day.utilization // "" | tostring),
+    (.five_hour.resets_at // ""),
+    (.seven_day.resets_at // "")
+  ' "$CACHE_FILE" 2>/dev/null | tr -d '\r')"
 fi
 
 remaining_time() {
@@ -170,15 +203,11 @@ GREEN="\033[0;32m"
 DIM="\033[2m"
 RESET="\033[0m"
 
-usage_color() {
+_color_for_val() {
   local val=${1%.*}
-  if [ "$val" -ge 80 ] 2>/dev/null; then
-    echo -ne "${RED}"
-  elif [ "$val" -ge 50 ] 2>/dev/null; then
-    echo -ne "${YELLOW}"
-  else
-    echo -ne "${GREEN}"
-  fi
+  if [ "$val" -ge 80 ] 2>/dev/null; then _uc="${RED}"
+  elif [ "$val" -ge 50 ] 2>/dev/null; then _uc="${YELLOW}"
+  else _uc="${GREEN}"; fi
 }
 
 # --- Output ---
@@ -200,7 +229,7 @@ if [ -n "$model" ]; then
 fi
 
 if [ -n "$ctx_pct" ]; then
-  printf " $(usage_color "$ctx_pct")ctx:%s%%${RESET}" "$ctx_pct"
+  _color_for_val "$ctx_pct"; printf " ${_uc}ctx:%s%%${RESET}" "$ctx_pct"
 fi
 
 printf " ${DIM}\$%.2f${RESET}" "$cost"
@@ -209,7 +238,7 @@ printf " ${DIM}\$%.2f${RESET}" "$cost"
 if [ -n "$five_hour" ]; then
   five_int=${five_hour%.*}
   printf " ${DIM}|${RESET} "
-  printf "$(usage_color "$five_hour")5h:${five_int}%%${RESET}"
+  _color_for_val "$five_hour"; printf "${_uc}5h:${five_int}%%${RESET}"
   five_remain=$(remaining_time "$five_hour_reset")
   if [ -n "$five_remain" ]; then
     printf "${DIM}(%s)${RESET}" "$five_remain"
@@ -218,7 +247,7 @@ fi
 
 if [ -n "$seven_day" ]; then
   seven_int=${seven_day%.*}
-  printf " $(usage_color "$seven_day")7d:${seven_int}%%${RESET}"
+  _color_for_val "$seven_day"; printf " ${_uc}7d:${seven_int}%%${RESET}"
   seven_remain=$(remaining_time "$seven_day_reset")
   if [ -n "$seven_remain" ]; then
     printf "${DIM}(%s)${RESET}" "$seven_remain"
