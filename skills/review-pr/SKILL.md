@@ -39,8 +39,10 @@ gh pr diff {number}
 
 Also read the following project files if they exist, to understand project conventions:
 - `CLAUDE.md` — project development rules
-- `.github/copilot-instructions.md` — additional code standards and architecture context
-- `schemas/openapi.yaml` — API schema (if changes touch route handlers or types)
+- `.github/copilot-instructions.md` — code standards and architecture context
+- `.github/CODEOWNERS` — ownership information
+
+These files define project-specific conventions that should be enforced during review. If they exist, treat their rules as requirements.
 
 ### 3. Analyze the diff
 
@@ -50,32 +52,22 @@ Review every changed file in the diff. For each file, check the categories below
 - Logic errors, off-by-one, null/undefined access
 - Missing error handling or swallowed errors
 - Race conditions in async code
-- Type soundness — do `as` casts bypass real validation?
+- Type soundness — do type casts bypass real validation?
 
-#### 3b. Security (pay special attention for this project)
-- Input validation at route boundaries
+#### 3b. Security
+- Input validation at system boundaries
 - Secrets/credentials leaked in responses or logs
-- SQL injection (parameterized queries required for D1)
+- Injection vulnerabilities (SQL, command, template, etc.)
 - SSRF, open redirect, XSS
-- Crypto: must use Web Crypto API, not Node.js `crypto`
-- OAuth: PKCE + state, tokens hashed/encrypted at rest
-- Cookies: `HttpOnly`, `Secure`, `SameSite=Lax`, `__Host-` prefix in production
+- Authentication/authorization gaps
 
-#### 3c. Project conventions (from CLAUDE.md / copilot-instructions)
-- SDD compliance: does the change touch API contracts? If so, was `schemas/openapi.yaml` updated first?
-- Generated types: `src/types/generated.ts` must not be hand-edited
-- Legal: no "WakaTime" in code identifiers, file names, or branding
-- `async/await` over raw Promise chains
-- Proper HTTP status codes matching OpenAPI spec
-- PRs should target `develop`, not `master`
+#### 3c. Project conventions
+Apply rules from `CLAUDE.md` and `.github/copilot-instructions.md` if they exist. Common checks:
+- Does the change follow the project's established patterns and style?
+- Are tests added or updated for the changed behavior?
+- Are breaking changes documented?
 
-#### 3d. Cloudflare Workers constraints
-- No Node.js APIs (use Web APIs / Cloudflare bindings only)
-- D1: use `db.batch()` for bulk operations, never single-row loops
-- Workers free tier: 10ms CPU per request — flag expensive operations
-- KV: eventual consistency awareness
-
-#### 3e. Code quality
+#### 3d. Code quality
 - Unnecessary complexity or over-engineering
 - Dead code, unused imports
 - Missing or misleading names
@@ -107,7 +99,7 @@ Structure the review comment as follows. Omit empty sections.
 Do NOT include praise or "positive notes" sections. Focus purely on actionable issues and improvements.
 
 Guidelines for the review:
-- Be specific — reference file paths and line numbers (e.g., `src/utils/oauth.ts:142`)
+- Be specific — reference file paths and line numbers (e.g., `src/utils/auth.ts:142`)
 - Suggest concrete fixes, not just "this is wrong"
 - Keep it concise — don't restate what the code does, focus on what's wrong or could be better
 - Distinguish between blocking issues and nice-to-haves
