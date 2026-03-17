@@ -1,20 +1,4 @@
 {
-  "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
-  },
-  "hooks": {
-    "Notification": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "# Windows (BurntToast): \"C:\\Program Files\\PowerShell\\7\\pwsh.exe\" -NoProfile -Command \"Import-Module BurntToast; New-BurntToastNotification -Text 'Claude Code', 'Task complete' -Silent\"\n# macOS: osascript -e 'display notification \"Task complete\" with title \"Claude Code\"'\n# Linux: notify-send 'Claude Code' 'Task complete'"
-          }
-        ]
-      }
-    ]
-  },
   "statusLine": {
     "type": "command",
     "command": "bash ~/.claude/statusline-command.sh"

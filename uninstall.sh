@@ -29,4 +29,3 @@ done
 echo ""
 echo "Done! Don't forget to:"
 echo "  - Remove the \"statusLine\" entry from ~/.claude/settings.json"
-echo "  - Remove any notification hooks if you added them"

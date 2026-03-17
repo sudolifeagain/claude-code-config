@@ -15,15 +15,12 @@ A [robbyrussell](https://github.com/ohmyzsh/ohmyzsh/wiki/Themes#robbyrussell)-in
 - Smart branch abbreviation: `worktree-*` → `wt:`, `feature/*` → `f/`, `fix/*` → `x/`
 - Color-coded usage quotas: green (<50%), yellow (50-79%), red (>=80%)
 - Quota data cached for 5 minutes (10 min backoff on failure)
+- Cross-platform: works on Windows (Git Bash), Linux, and macOS
 
 ### Custom Skills
 
 - **`/review-pr`** — Thorough code review posted as a PR comment
 - **`/copilot-review`** — Request GitHub Copilot review on a PR
-
-### Notification Hook (Windows)
-
-Toast notification via [BurntToast](https://github.com/Windos/BurntToast) when Claude finishes a task.
 
 ## Installation
 
@@ -68,58 +65,6 @@ chmod +x ~/.claude/statusline-command.sh
 cp -r skills/* ~/.claude/skills/
 ```
 
-4. (Optional) Set up notification hooks — see `settings.example.json` for platform-specific examples.
-
-### Notification Setup by Platform
-
-**Windows** (requires [BurntToast](https://github.com/Windos/BurntToast) PowerShell module):
-
-```json
-{
-  "hooks": {
-    "Notification": [{
-      "matcher": "",
-      "hooks": [{
-        "type": "command",
-        "command": "pwsh -NoProfile -Command \"Import-Module BurntToast; New-BurntToastNotification -Text 'Claude Code', 'Task complete' -Silent\""
-      }]
-    }]
-  }
-}
-```
-
-**macOS:**
-
-```json
-{
-  "hooks": {
-    "Notification": [{
-      "matcher": "",
-      "hooks": [{
-        "type": "command",
-        "command": "osascript -e 'display notification \"Task complete\" with title \"Claude Code\"'"
-      }]
-    }]
-  }
-}
-```
-
-**Linux** (requires `notify-send`):
-
-```json
-{
-  "hooks": {
-    "Notification": [{
-      "matcher": "",
-      "hooks": [{
-        "type": "command",
-        "command": "notify-send 'Claude Code' 'Task complete'"
-      }]
-    }]
-  }
-}
-```
-
 ## Uninstall
 
 ```bash
@@ -127,21 +72,21 @@ cd claude-code-config
 bash uninstall.sh
 ```
 
-Then manually remove the `"statusLine"` and `"hooks"` entries from `~/.claude/settings.json`.
+Then remove the `"statusLine"` entry from `~/.claude/settings.json`.
 
 ## File Structure
 
 ```
 claude-code-config/
 ├── README.md
+├── LICENSE
 ├── install.sh                  # Installer script
 ├── uninstall.sh                # Uninstaller script
 ├── settings.example.json       # Example settings.json
 ├── statusline-command.sh       # Status line script
-├── skills/
-│   ├── copilot-review/SKILL.md # /copilot-review skill
-│   └── review-pr/SKILL.md      # /review-pr skill
-└── .gitignore
+└── skills/
+    ├── copilot-review/SKILL.md # /copilot-review skill
+    └── review-pr/SKILL.md      # /review-pr skill
 ```
 
 ## License
@@ -167,15 +112,12 @@ MIT
 - ブランチ名省略: `worktree-*` → `wt:`, `feature/*` → `f/`, `fix/*` → `x/`
 - クォータ使用量を色分け: 緑 (<50%)、黄 (50-79%)、赤 (>=80%)
 - クォータデータは5分キャッシュ（失敗時は10分バックオフ）
+- クロスプラットフォーム: Windows (Git Bash)、Linux、macOS で動作
 
 ### カスタムスキル
 
 - **`/review-pr`** — PRのコードレビューを実施し、コメントとして投稿
 - **`/copilot-review`** — GitHub Copilotによるレビューをリクエスト
-
-### 通知フック (Windows)
-
-[BurntToast](https://github.com/Windos/BurntToast) によるトースト通知で、Claudeがタスクを完了したことをお知らせします。
 
 ## インストール
 
@@ -220,8 +162,6 @@ chmod +x ~/.claude/statusline-command.sh
 cp -r skills/* ~/.claude/skills/
 ```
 
-4. (任意) 通知フックの設定 — プラットフォーム別の例は `settings.example.json` を参照してください。各プラットフォームの設定は英語版セクションの「Notification Setup by Platform」を参照してください。
-
 ## アンインストール
 
 ```bash
@@ -229,4 +169,4 @@ cd claude-code-config
 bash uninstall.sh
 ```
 
-その後、`~/.claude/settings.json` から `"statusLine"` と `"hooks"` のエントリを手動で削除してください。
+その後、`~/.claude/settings.json` から `"statusLine"` のエントリを削除してください。
