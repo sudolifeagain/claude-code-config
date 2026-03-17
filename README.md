@@ -47,7 +47,7 @@ Toast notification via [BurntToast](https://github.com/Windos/BurntToast) when C
 ### Quick Install
 
 ```bash
-git clone https://github.com/sisisin/claude-code-config.git
+git clone https://github.com/sudolifeagain/claude-code-config.git
 cd claude-code-config
 bash install.sh
 ```
@@ -130,12 +130,22 @@ cp -r skills/* ~/.claude/skills/
 }
 ```
 
+## Uninstall
+
+```bash
+cd claude-code-config
+bash uninstall.sh
+```
+
+Then manually remove the `"statusLine"` and `"hooks"` entries from `~/.claude/settings.json`.
+
 ## File Structure
 
 ```
 claude-code-config/
 ├── README.md
 ├── install.sh                  # Installer script
+├── uninstall.sh                # Uninstaller script
 ├── settings.example.json       # Example settings.json
 ├── statusline-command.sh       # Status line script
 ├── skills/
@@ -199,7 +209,7 @@ MIT
 ### クイックインストール
 
 ```bash
-git clone https://github.com/sisisin/claude-code-config.git
+git clone https://github.com/sudolifeagain/claude-code-config.git
 cd claude-code-config
 bash install.sh
 ```
@@ -231,3 +241,12 @@ cp -r skills/* ~/.claude/skills/
 ```
 
 4. (任意) 通知フックの設定 — プラットフォーム別の例は `settings.example.json` を参照してください。各プラットフォームの設定は英語版セクションの「Notification Setup by Platform」を参照してください。
+
+## アンインストール
+
+```bash
+cd claude-code-config
+bash uninstall.sh
+```
+
+その後、`~/.claude/settings.json` から `"statusLine"` と `"hooks"` のエントリを手動で削除してください。
