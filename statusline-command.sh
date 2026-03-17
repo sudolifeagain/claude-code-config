@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Claude Code status line - robbyrussell theme inspired
-# Responsive layout based on terminal width
 # with 5-hour / weekly usage quota display
 
 input=$(cat)
@@ -10,33 +9,6 @@ model=$(echo "$input" | jq -r '.model.display_name // ""')
 used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 cost=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
 duration_ms=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
-
-# Terminal width detection (cached for 30s to avoid slow mode con calls)
-COLS_CACHE="/tmp/.claude-termcols"
-COLS_TTL=30
-_detect_cols() {
-  # 1. Windows: mode con gives the real width
-  local w
-  w=$(cmd //c "mode con" 2>/dev/null | sed -n '5p' | tr -dc '0-9')
-  if [ -n "$w" ] && [ "$w" -gt 0 ] 2>/dev/null; then echo "$w"; return; fi
-  # 2. tput (Linux/macOS, or if Windows detection fails)
-  w=$(tput cols 2>/dev/null)
-  if [ -n "$w" ] && [ "$w" -gt 0 ] 2>/dev/null; then echo "$w"; return; fi
-  # 3. Fallback
-  echo 120
-}
-if [ -f "$COLS_CACHE" ]; then
-  cols_age=$(( $(date +%s) - $(date -r "$COLS_CACHE" +%s 2>/dev/null || stat -c %Y "$COLS_CACHE" 2>/dev/null || echo 0) ))
-  if [ "$cols_age" -gt "$COLS_TTL" ]; then
-    COLS=$(_detect_cols)
-    echo "$COLS" > "$COLS_CACHE"
-  else
-    COLS=$(cat "$COLS_CACHE")
-  fi
-else
-  COLS=$(_detect_cols)
-  echo "$COLS" > "$COLS_CACHE"
-fi
 
 # Git branch, dirty status, and project directory (single pass)
 branch=""
@@ -63,8 +35,7 @@ fi
 # Abbreviate long branch names (especially for worktree)
 abbreviate_branch() {
   local b="$1"
-  local max_len="$2"
-  [ -z "$max_len" ] && max_len=25
+  local max_len=25
 
   # Strip common worktree/feature prefixes for display
   local display="$b"
@@ -78,7 +49,6 @@ abbreviate_branch() {
   # If it had a prefix, show a short indicator
   local prefix_indicator=""
   if [ "$display" != "$b" ]; then
-    # Show first letter of prefix (f: for feature, x: for fix, etc.)
     case "$b" in
       worktree-*) prefix_indicator="wt:" ;;
       feature/*|feat/*) prefix_indicator="f/" ;;
@@ -206,39 +176,13 @@ usage_color() {
   fi
 }
 
-# ============================================================
-# Responsive output based on terminal width
-# ============================================================
-#
-# Layout tiers (visible character counts, approximate):
-#   Wide  (>=130): dir git:(branch) model [ctx:N%] $0.1234 NmNs | 5h:N%(Xh) 7d:N%(Xd)
-#   Med   (>=100): dir git:(branch) model ctx:N% $0.12 | 5h:N%(Xh) 7d:N%(Xd)
-#   Narrow (>=70): dir git:(br…) $0.12 | 5h:N% 7d:N%
-#   Tiny   (<70):  dir (br…) 5h:N% 7d:N%
+# --- Output ---
+# Format: dir git:(branch) model ctx:N% $0.12 | 5h:N%(Xh) 7d:N%(Xd)
 
-# Determine branch max length by tier
-if [ "$COLS" -ge 130 ]; then
-  TIER="wide"
-  BR_MAX=35
-elif [ "$COLS" -ge 100 ]; then
-  TIER="med"
-  BR_MAX=25
-elif [ "$COLS" -ge 70 ]; then
-  TIER="narrow"
-  BR_MAX=15
-else
-  TIER="tiny"
-  BR_MAX=10
-fi
-
-# --- Build output ---
-
-# 1. Directory name (always shown)
 printf "${CYAN}%s${RESET}" "$dir_name"
 
-# 2. Git branch (always shown if available, length varies by tier)
 if [ -n "$branch" ]; then
-  br_display=$(abbreviate_branch "$branch" "$BR_MAX")
+  br_display=$(abbreviate_branch "$branch")
   if [ -n "$dirty" ]; then
     printf " ${BLUE}git:(${RED}%s${BLUE})${RESET} ${YELLOW}%s${RESET}" "$br_display" "$dirty"
   else
@@ -246,49 +190,17 @@ if [ -n "$branch" ]; then
   fi
 fi
 
-# 3. Model name (wide/med only)
-if [ "$TIER" = "wide" ] || [ "$TIER" = "med" ]; then
-  if [ -n "$model" ]; then
-    printf " ${DIM}%s${RESET}" "$model"
-  fi
+if [ -n "$model" ]; then
+  printf " ${DIM}%s${RESET}" "$model"
 fi
 
-# 4. Context usage (wide/med only)
 if [ -n "$ctx_pct" ]; then
-  if [ "$TIER" = "wide" ]; then
-    printf " ${DIM}[ctx:${RESET}"
-    printf "$(usage_color "$ctx_pct")%s%%${RESET}" "$ctx_pct"
-    printf "${DIM}]${RESET}"
-  elif [ "$TIER" = "med" ]; then
-    printf " $(usage_color "$ctx_pct")ctx:%s%%${RESET}" "$ctx_pct"
-  fi
+  printf " $(usage_color "$ctx_pct")ctx:%s%%${RESET}" "$ctx_pct"
 fi
 
-# 5. Session cost (wide/med/narrow)
-if [ "$TIER" != "tiny" ]; then
-  if [ "$TIER" = "wide" ]; then
-    printf " ${DIM}\$%.4f${RESET}" "$cost"
-  else
-    printf " ${DIM}\$%.2f${RESET}" "$cost"
-  fi
-fi
+printf " ${DIM}\$%.2f${RESET}" "$cost"
 
-# 6. Elapsed time (wide only)
-if [ "$TIER" = "wide" ]; then
-  dur_int=${duration_ms%.*}
-  if [ "$dur_int" -gt 0 ] 2>/dev/null; then
-    dur_sec=$(( dur_int / 1000 ))
-    dur_min=$(( dur_sec / 60 ))
-    dur_rem=$(( dur_sec % 60 ))
-    if [ "$dur_min" -gt 0 ]; then
-      printf " ${DIM}%dm%ds${RESET}" "$dur_min" "$dur_rem"
-    else
-      printf " ${DIM}%ds${RESET}" "$dur_sec"
-    fi
-  fi
-fi
-
-# 7. Usage quotas (always shown if available - this is critical info)
+# 5-hour / weekly usage quota with reset countdown
 if [ -n "$five_hour" ]; then
   five_int=${five_hour%.*}
   printf " ${DIM}|${RESET} "

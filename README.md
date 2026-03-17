@@ -4,21 +4,11 @@ Custom configuration for [Claude Code](https://docs.anthropic.com/en/docs/claude
 
 ## Features
 
-### Responsive Status Line
+### Status Line
 
-A [robbyrussell](https://github.com/ohmyzsh/ohmyzsh/wiki/Themes#robbyrussell)-inspired status line that adapts to your terminal width.
+A [robbyrussell](https://github.com/ohmyzsh/ohmyzsh/wiki/Themes#robbyrussell)-inspired status line.
 
-**Displayed information:**
-
-| Element | Wide (>=130) | Medium (>=100) | Narrow (>=70) | Tiny (<70) |
-|---|:---:|:---:|:---:|:---:|
-| Project directory | Yes | Yes | Yes | Yes |
-| Git branch + dirty flag | Full | Full | Abbreviated | Abbreviated |
-| Model name | Yes | Yes | - | - |
-| Context window usage | `[ctx:N%]` | `ctx:N%` | - | - |
-| Session cost | `$0.1234` | `$0.12` | `$0.12` | - |
-| Elapsed time | Yes | - | - | - |
-| 5h / 7d usage quota | With countdown | With countdown | With countdown | With countdown |
+**Displayed information:** project directory, git branch (+ dirty flag), model name, context window usage, session cost, 5h / 7d usage quota with countdown.
 
 **Key features:**
 - Worktree-aware: shows the original project name even when running with `claude -w`
@@ -166,21 +156,11 @@ MIT
 
 ## 機能
 
-### レスポンシブ・ステータスライン
+### ステータスライン
 
-[robbyrussell](https://github.com/ohmyzsh/ohmyzsh/wiki/Themes#robbyrussell) テーマ風のステータスラインです。ターミナルの横幅に応じて表示内容を自動調整します。
+[robbyrussell](https://github.com/ohmyzsh/ohmyzsh/wiki/Themes#robbyrussell) テーマ風のステータスラインです。
 
-**表示内容：**
-
-| 項目 | Wide (>=130) | Medium (>=100) | Narrow (>=70) | Tiny (<70) |
-|---|:---:|:---:|:---:|:---:|
-| プロジェクト名 | 表示 | 表示 | 表示 | 表示 |
-| Gitブランチ + dirty | フル | フル | 省略 | 省略 |
-| モデル名 | 表示 | 表示 | - | - |
-| コンテキスト使用率 | `[ctx:N%]` | `ctx:N%` | - | - |
-| セッションコスト | `$0.1234` | `$0.12` | `$0.12` | - |
-| 経過時間 | 表示 | - | - | - |
-| 5h / 7d クォータ | カウントダウン付 | カウントダウン付 | カウントダウン付 | カウントダウン付 |
+**表示内容：** プロジェクト名、Gitブランチ（+ dirty フラグ）、モデル名、コンテキスト使用率、セッションコスト、5h / 7d クォータ（カウントダウン付）
 
 **主な機能：**
 - ワークツリー対応: `claude -w` 使用時でも元のプロジェクト名を表示
